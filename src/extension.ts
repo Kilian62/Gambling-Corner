@@ -84,16 +84,21 @@ class CasinoPanel {
 	}
 
 	private _getHtmlForWebview(webview: vscode.Webview) {
-		// Récupération des images depuis le dossier media
 		const getImg = (name: string) => webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media', name));
-		
-		// ATTENTION : Assurez-vous que ces fichiers existent dans votre dossier 'media'
+
+		// Vos 7 images
 		const img1 = getImg('f1.jpg');
 		const img2 = getImg('f2.jpg');
 		const img3 = getImg('f3.jpg');
+		const img4 = getImg('f4.jpg');
+		const img5 = getImg('f5.jpg');
+		const img6 = getImg('f6.jpg');
+		const img7 = getImg('f7.jpg');
 
-		// Tableau des images pour le JS
-		const imagesList = JSON.stringify([img1.toString(), img2.toString(), img3.toString()]);
+		const imagesList = JSON.stringify([
+			img1.toString(), img2.toString(), img3.toString(),
+			img4.toString(), img5.toString(), img6.toString(), img7.toString()
+		]);
 
 		return `<!DOCTYPE html>
 		<html lang="fr">
@@ -104,15 +109,32 @@ class CasinoPanel {
 					background-color: var(--vscode-editor-background);
 					color: var(--vscode-editor-foreground);
 					display: flex; flex-direction: column; align-items: center; justify-content: center;
-					height: 95vh; font-family: 'Segoe UI', sans-serif;
+					height: 100vh; overflow: hidden; margin: 0; font-family: 'Segoe UI', sans-serif;
+					transition: background-color 0.2s;
 				}
-				h1 { text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px; font-size: 1.5em; }
 				
-				/* Les Rouleaux */
+				/* --- ANIMATIONS DE VICTOIRE --- */
+				@keyframes flashWin {
+					0% { background-color: #333; }
+					50% { background-color: #5a4a00; } /* Flash Doré sombre */
+					100% { background-color: #333; }
+				}
+				.winning-body { animation: flashWin 0.5s infinite; }
+
+				@keyframes popText {
+					0% { transform: scale(1); text-shadow: 0 0 10px gold; }
+					50% { transform: scale(1.5); text-shadow: 0 0 50px gold, 0 0 20px red; }
+					100% { transform: scale(1); text-shadow: 0 0 10px gold; }
+				}
+				.winning-text { animation: popText 0.8s infinite; color: #FFD700 !important; }
+
+				/* --- STRUCTURE --- */
+				h1 { text-transform: uppercase; letter-spacing: 2px; margin-bottom: 20px; font-size: 1.5em; z-index: 10;}
+				
 				.slots-box {
 					background: #2d2d2d; padding: 15px; border-radius: 10px;
 					display: flex; gap: 10px; border: 4px solid #d4af37;
-					box-shadow: 0 0 20px rgba(0,0,0,0.5); margin-bottom: 30px;
+					box-shadow: 0 0 20px rgba(0,0,0,0.5); margin-bottom: 30px; z-index: 10;
 				}
 				.reel {
 					width: 80px; height: 80px; background: white;
@@ -121,27 +143,31 @@ class CasinoPanel {
 				}
 				.reel img { width: 90%; height: 90%; object-fit: contain; }
 				
-				/* Effet flou */
 				.blur { animation: blurAnim 0.1s infinite; }
 				@keyframes blurAnim { 0% { filter: blur(2px); transform: translateY(-2px); } 100% { filter: blur(2px); transform: translateY(2px); } }
 
-				/* LE GROS BOUTON ROUGE */
+				/* BOUTON */
 				#spinBtn {
 					width: 120px; height: 120px; border-radius: 50%; border: none; cursor: pointer;
 					background: radial-gradient(circle at 30% 30%, #ff5e5e, #c00000);
 					box-shadow: 0 8px 0 #800000, 0 15px 20px rgba(0,0,0,0.4);
 					font-weight: bold; color: white; font-size: 1.2em; text-shadow: 0 2px 2px rgba(0,0,0,0.3);
-					transition: all 0.1s;
+					transition: all 0.1s; z-index: 10;
 				}
-				#spinBtn:active {
-					transform: translateY(8px); box-shadow: 0 0 0 #800000, inset 0 0 10px rgba(0,0,0,0.5);
-				}
+				#spinBtn:active { transform: translateY(8px); box-shadow: 0 0 0 #800000; }
 				#spinBtn:disabled { filter: grayscale(0.8); cursor: not-allowed; }
 
-				#status { margin-top: 25px; font-size: 1.2em; height: 30px; font-weight: bold;}
+				#status { margin-top: 25px; font-size: 1.5em; height: 40px; font-weight: bold; z-index: 10; text-align: center;}
+
+				/* CONFETTIS CANVAS */
+				#confetti-canvas {
+					position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+					pointer-events: none; z-index: 5;
+				}
 			</style>
 		</head>
 		<body>
+			<canvas id="confetti-canvas"></canvas>
 			<h1>Gambling Corner</h1>
 			<div class="slots-box">
 				<div class="reel"><img id="r1" src="${img1}"></div>
@@ -165,19 +191,22 @@ class CasinoPanel {
 				});
 
 				function start() {
+					// Reset visuel
+					document.body.classList.remove('winning-body');
+					status.classList.remove('winning-text');
+					stopConfetti(); // Arrêter les confettis
+					
 					btn.disabled = true;
 					status.innerText = "La roue tourne...";
 					status.style.color = "inherit";
 
-					// Lancer les 3 rouleaux
 					reels.forEach((r, i) => {
 						r.classList.add('blur');
 						intervals[i] = setInterval(() => {
 							r.src = images[Math.floor(Math.random() * images.length)];
-						}, 100);
+						}, 80);
 					});
 
-					// Arrêt progressif
 					setTimeout(() => stop(0), 1500);
 					setTimeout(() => stop(1), 2200);
 					setTimeout(() => stop(2), 3000);
@@ -188,8 +217,9 @@ class CasinoPanel {
 					clearInterval(intervals[index]);
 					reels[index].classList.remove('blur');
 					
-					// Choix final
+					// POUR TRICHER ET TESTER LA VICTOIRE, remplacez la ligne du dessous par : const finalIndex = 0;
 					const finalIndex = Math.floor(Math.random() * images.length);
+					
 					reels[index].src = images[finalIndex];
 					results[index] = finalIndex;
 
@@ -199,13 +229,70 @@ class CasinoPanel {
 				function checkWin() {
 					btn.disabled = false;
 					if(results[0] === results[1] && results[1] === results[2]) {
-						status.innerHTML = "✨ JACKPOT ! ✨";
-						status.style.color = "#FFD700";
+						// VICTOIRE !!!
+						status.innerHTML = "✨ JACKPOT !!! ✨";
+						document.body.classList.add('winning-body'); // Flash background
+						status.classList.add('winning-text'); // Gros texte
+						startConfetti(); // Lancer les confettis
 					} else {
 						status.innerText = "Perdu... Réessayez !";
 					}
 					results = [];
 				}
+
+				// --- MOTEUR DE CONFETTIS (Léger et puissant) ---
+				const canvas = document.getElementById('confetti-canvas');
+				const ctx = canvas.getContext('2d');
+				canvas.width = window.innerWidth;
+				canvas.height = window.innerHeight;
+				let particles = [];
+				let animationId;
+
+				function startConfetti() {
+					particles = [];
+					for(let i=0; i<150; i++) {
+						particles.push({
+							x: Math.random() * canvas.width,
+							y: Math.random() * canvas.height - canvas.height,
+							vx: Math.random() * 4 - 2,
+							vy: Math.random() * 5 + 2,
+							color: 'hsl('+Math.random()*360+', 100%, 50%)',
+							size: Math.random() * 8 + 4
+						});
+					}
+					animate();
+				}
+
+				function stopConfetti() {
+					cancelAnimationFrame(animationId);
+					ctx.clearRect(0, 0, canvas.width, canvas.height);
+				}
+
+				function animate() {
+					ctx.clearRect(0, 0, canvas.width, canvas.height);
+					particles.forEach((p, i) => {
+						p.x += p.vx;
+						p.y += p.vy;
+						p.vy += 0.05; // Gravité
+						
+						// Reset si en bas
+						if(p.y > canvas.height) {
+							p.y = -20;
+							p.x = Math.random() * canvas.width;
+							p.vy = Math.random() * 5 + 2;
+						}
+						
+						ctx.fillStyle = p.color;
+						ctx.fillRect(p.x, p.y, p.size, p.size);
+					});
+					animationId = requestAnimationFrame(animate);
+				}
+				
+				// Redimensionner le canvas si on change la taille de la fenêtre
+				window.addEventListener('resize', () => {
+					canvas.width = window.innerWidth;
+					canvas.height = window.innerHeight;
+				});
 			</script>
 		</body>
 		</html>`;

@@ -1,6 +1,7 @@
 {
   "name": "gambling-corner",
   "displayName": "Gambling-Corner",
+  "publisher": "Kiki67",
   "description": "Une machine à sous dans VS Code",
   "version": "0.0.1",
   "engines": {

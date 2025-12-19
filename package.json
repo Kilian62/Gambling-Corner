@@ -10,6 +10,9 @@
   "categories": [
     "Other"
   ],
+  "activationEvents": [
+    "onView:gamblingCornerView"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
